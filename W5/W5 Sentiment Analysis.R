@@ -73,10 +73,11 @@ score.sentiment = function(sentences, pos.words, neg.words, .progress='none')
 
 sentiment.scores= score.sentiment(geartweets, pos.words, neg.words, .progress='text')
 
+# Create Histogram of sentiment scores
 score= sentiment.scores$score
 hist(score)
-score = subset(score,score!=0)
-sentiscore = data.frame(score)
+nonZeroscore = subset(score,score!=0)
+sentiscore = data.frame(nonZeroscore)
 
 library("googleVis")
 Hist<- gvisHistogram(sentiscore, options=list(
@@ -84,4 +85,21 @@ Hist<- gvisHistogram(sentiscore, options=list(
   colors="['#5C3292', '#1A8763', '#871B47']",
   width=400, height=360))
 plot(Hist)
+
+# Create pie chart of sentiment scores
+
+negScore = subset(score, score < 0)
+posScore = subset(score, score > 0)
+neuScore = subset(score, score == 0)
+
+negNum= length(negScore)
+posNum= length(posScore)
+neuNum= length(neuScore)
+
+dftemp=data.frame(topic=c("Negative", "Positive", "Neutral"), 
+                  number=c(negNum,posNum,neuNum))
+
+Pie <- gvisPieChart(dftemp)
+plot(Pie)
+
 
