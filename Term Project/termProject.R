@@ -2,25 +2,213 @@
 # Every group member should contribute to this scripts
 # I will track and grade student contribution through Git
 
-# 1 - Load data
+# 1 - Load data (MD)
+
+# Install necessary packages
+
+install.packages('tm')
+install.packages('RColorBrewer')
+install.packages('wordcloud')
+install.packages("readr")
+install.packages("tm")
+install.packages("RColorBrewer")
+install.packages("wordcloud")
+install.packages("plyr")
+install.packages("stringr")
+install.packages("googleVis")
+install.packages("stringi")
+install.packages("magrittr")
+install.packages("dplyr")
+install.packages("mclust")
+install.packages("igraph")
+install.packages("sna")
+source("http://bioconductor.org/biocLite.R")
+biocLite("RBGL")
+biocLite("graph")
+
+
+library('tm')
+library('RColorBrewer')
+library('wordcloud')
+library("googleVis")
+library("plyr")
+library(readr)
+library(mclust)
+library(sna)
+library(graph)
+library(igraph)
+library("stringr")
+library("stringi")
+library("magrittr")
+library("dplyr")
+
+# 2 - Word Cloud (MD)
+
+# Read data in a R data object
+UniDaysdata <- readRDS("Unidays.rds")
+tweets <- UniDaysdata$MESSAGE_BODY
+
+
+# Function to clean tweets
+clean.text = function(x)
+{
+      # remove rt
+      x = gsub("rt", "", x)
+      # remove at
+      x = gsub("@\\w+", "", x)
+      # remove punctuation
+      x = gsub("[[:punct:]]", "", x)
+      # remove numbers
+      x = gsub("[[:digit:]]", "", x)
+      # remove links http
+      x = gsub("http\\w+", "", x)
+      # remove tabs
+      x = gsub("[ |\t]{2,}", "", x)
+      # remove blank spaces at the beginning
+      x = gsub("^ ", "", x)
+      # remove blank spaces at the end
+      x = gsub(" $", "", x)
+      return(x)
+
+}
+
+# clean tweets
+tweets = clean.text(tweets)
 
 
 
-# 2 - Word Cloud
+
+#********************************************
+#         Word Cloud
+#********************************************
+corpus = Corpus(VectorSource(tweets))
+corpus = Corpus(VectorSource(cmail))
+# create term-document matrix
+tdm = TermDocumentMatrix(
+  corpus,
+    control = list(
+        wordLengths=c(3,20),
+	    removePunctuation = TRUE,
+	        stopwords = c("the", "a", stopwords("english")),
+		    removeNumbers = TRUE, tolower = FALSE) )
+
+# convert as matrix
+tdm = as.matrix(tdm)
+
+# get word counts in decreasing order
+word_freqs = sort(rowSums(tdm), decreasing=TRUE)
+
+#check top 50 most mentioned words
+head(word_freqs, 50)
+
+#remove the top words which don’t generate insights such as "the", "a", "and", etc.
+word_freqs = word_freqs[-(1)]  #Here “1” is 1st word in the list we want to remove
+
+# create a data frame with words and their frequencies
+dm = data.frame(word=names(word_freqs), freq=word_freqs)
+
+#Plot corpus in a clored graph; need RColorBrewer package
+wordcloud(head(dm$word, 50), head(dm$freq, 50), random.order=FALSE, colors=brewer.pal(8, "Dark2"))
 
 
 
-# 3 - Topic Classification
+
+# 3 - Topic Classification ( Ekhlasur) 
+ 
+
+
+# 4 - Sentiment Analysis (Ephraim)
+
+#********************************************
+#         Sentiment Analysis
+#********************************************
+#R's c() function (for "combine") allows us to add a few industry- and Twitter-specific terms to form our final pos.words and neg.words vectors:
+
+pos.words = scan('positive-words.txt', what='character', comment.char=';')
+neg.words = scan('negative-words.txt', what='character', comment.char=';')
+
+neg.words = c(neg.words, 'wtf', 'fail')
+
+#Implementing our sentiment scoring algorithm
+require(plyr)
+require(stringr)
+require(stringi)
+
+score.sentiment = function(sentences, pos.words, neg.words, .progress='none')
+{
+  
+  # we got a vector of sentences. plyr will handle a list
+  # or a vector as an "l" for us
+  # we want a simple array of scores back, so we use
+  # "l" + "a" + "ply" = "laply":
+  scores = laply(sentences, function(sentence, pos.words, neg.words) {
+    
+    # clean up sentences with R's regex-driven global substitute, gsub():
+    sentence = gsub('[[:punct:]]', '', sentence)
+    sentence = gsub('[[:cntrl:]]', '', sentence)
+    sentence = gsub('\\d+', '', sentence)
+    # and convert to lower case:
+    #sentence = tolower(sentence)
+    
+    # split into words. str_split is in the stringr package
+    word.list = str_split(sentence, '\\s+')
+    # sometimes a list() is one level of hierarchy too much
+    words = unlist(word.list)
+    
+    # compare our words to the dictionaries of positive & negative terms
+    pos.matches = match(words, pos.words)
+    neg.matches = match(words, neg.words)
+    
+    # match() returns the position of the matched term or NA
+    # we just want a TRUE/FALSE:
+    pos.matches = !is.na(pos.matches)
+    neg.matches = !is.na(neg.matches)
+    
+    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+    score = sum(pos.matches) - sum(neg.matches)
+    
+    return(score)
+  }, pos.words, neg.words, .progress=.progress )
+  
+  scores.df = data.frame(score=scores, text=sentences)
+  return(scores.df)
+}
+
+sentiment.scores= score.sentiment(tweets, pos.words, neg.words, .progress='text')
+
+score= sentiment.scores$score
+hist(score)
+score = subset(score,score!=0)
+sentiscore = data.frame(score)
+
+#topic.scores= score.topic(tweets, sports.words, .progress='text')
+#topic.mentioned = subset(topic.scores, score !=0)
+
+#N= nrow(topic.scores)
+#Nmentioned = nrow(topic.mentioned)
+
+#dftemp=data.frame(topic=c("Mentioned", "Not Mentioned"), 
+#                 number=c(Nmentioned,N-Nmentioned))
+
+Pos= nrow(sentiment.scores)
+Neg= nrow(sentiscore)
+Ntrl= nrow(NULL)
+
+dftemp=data.frame(words=c("Positive", "Negative", "Neutral"),
+                  number=c(Neg,Pos-Neg,!Pos||Neg))
+
+library("googleVis")
+Pie<- gvisPieChart(dftemp, options=list(
+  legend="{ position: 'top', maxLines:2 }",
+  colors="['#5C3292', '#1A8763', '#871B47']",
+  width=400, height=360))
+plot(Pie)
 
 
 
-# 4 - Sentiment Analysis
+# 5 - User Profile (Monica & MD)
 
 
 
-# 5 - User Profile
-
-
-
-# 6 - Network Analysis
+# 6 - Network Analysis (Satish)
 
