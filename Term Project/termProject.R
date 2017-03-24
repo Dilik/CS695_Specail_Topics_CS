@@ -28,8 +28,8 @@ biocLite("graph")
 
 
 library('tm')
-library('RColorBrewer')
-library('wordcloud')
+library("RColorBrewer")
+library("wordcloud")
 library("googleVis")
 library("plyr")
 library(readr)
@@ -222,17 +222,14 @@ plot(Pie)
 #         Social Network Analysis
 #********************************************
 
-# Load data
-UniDays <- readRDS("UniDays.RDS")
-tweets = UniDays$MESSAGE_BODY
 tweets = as.character(tweets)
 screenname = UniDays$USER_SCREEN_NAME
 screenname = as.character(screenname)
-write_rds(cbind(screenname,tweets), "tweets.RDS")
+write.csv(cbind(screenname,tweets), "tweets.csv")
 
 # Generate edge list from tweets
-source("termProject.R")
-retweeterPoster <- createList("tweets.RDS")
+source("createList.R")
+retweeterPoster <- createList("tweets.csv")
 
 # Create graph
 m <- ftM2adjM(ft = as.matrix(retweeterPoster[, 1:2]), W = retweeterPoster$weight, edgemode = "directed")
@@ -330,6 +327,7 @@ PlotGraph(m2,
           labels = central$label,
           filename = "bybBetwenness.png",
           title = "Pruned Graph by Centrality")
+
 
 
 
