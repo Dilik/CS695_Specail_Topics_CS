@@ -52,6 +52,12 @@ tweets <- UniDaysdata$MESSAGE_BODY
 # Function to clean tweets
 clean.text = function(x)
 {
+      #remove RT
+      x = gsub("RT", "", x)
+      #remove #
+      x = gsub("#\\w+", "", x)
+      #remove dimond symbols
+      x = gsub("�\\w+", "", x) 
       # remove rt
       x = gsub("rt", "", x)
       # remove at
@@ -68,6 +74,8 @@ clean.text = function(x)
       x = gsub("^ ", "", x)
       # remove blank spaces at the end
       x = gsub(" $", "", x)
+      # make it lower case
+      x = tolower(x)
       return(x)
 
 }
@@ -85,12 +93,11 @@ corpus = Corpus(VectorSource(tweets))
 corpus = Corpus(VectorSource(cmail))
 # create term-document matrix
 tdm = TermDocumentMatrix(
-  corpus,
-    control = list(
-        wordLengths=c(3,20),
-	    removePunctuation = TRUE,
-	        stopwords = c("the", "a", stopwords("english")),
-		    removeNumbers = TRUE, tolower = FALSE) )
+ corpus,
+ control = list(wordLengths=c(3,20),
+ removePunctuation = TRUE,
+ stopwords = c("the", "a", stopwords("english")),
+ removeNumbers = TRUE, tolower = TRUE) )
 
 # convert as matrix
 tdm = as.matrix(tdm)
