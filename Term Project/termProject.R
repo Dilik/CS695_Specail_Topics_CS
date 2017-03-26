@@ -220,7 +220,7 @@ plot(Pie)
 UniDays$gender <- tolower(UniDays$USER_GENDER)
 genderSum = data.frame(table(UniDays$gender))
 
-//creattung bar char that shows frequency of gender users 
+#creattung bar char that shows frequency of gender users 
 Bar1 <- gvisBarChart(genderSum,
   options = list(hAxes="[{title:'Popularity', titleTextStyle: {color: 'green'}}]"
     , vAxes="[{title:'Gender', titleTextStyle: {color: 'blue'}}]"))
