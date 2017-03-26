@@ -52,31 +52,29 @@ tweets <- UniDaysdata$MESSAGE_BODY
 # Function to clean tweets
 clean.text = function(x)
 {
-      #remove RT
-      x = gsub("RT", "", x)
-      #remove #
-      x = gsub("#\\w+", "", x)
-      #remove dimond symbols
-      x = gsub("�\\w+", "", x) 
-      # remove rt
-      x = gsub("rt", "", x)
-      # remove at
-      x = gsub("@\\w+", "", x)
-      # remove punctuation
-      x = gsub("[[:punct:]]", "", x)
-      # remove numbers
-      x = gsub("[[:digit:]]", "", x)
-      # remove links http
-      x = gsub("http\\w+", "", x)
-      # remove tabs
-      x = gsub("[ |\t]{2,}", "", x)
-      # remove blank spaces at the beginning
-      x = gsub("^ ", "", x)
-      # remove blank spaces at the end
-      x = gsub(" $", "", x)
-      # make it lower case
-      x = tolower(x)
-      return(x)
+  # remove unicode
+  x = gsub("/[\ud800-\udfff]/g", "", x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove hashtag
+  x = gsub("#\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # tolower
+  x = tolower(x)
+  return(x)
 
 }
 
@@ -214,6 +212,7 @@ plot(Pie)
 
 
 # 5 - User Profile (Monica & MD)
+
 
 
 
