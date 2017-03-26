@@ -213,6 +213,18 @@ plot(Pie)
 
 # 5 - User Profile (Monica & MD)
 
+#********************************************
+#         Create a Customer Profile
+#********************************************
+
+UniDays$gender <- tolower(UniDays$USER_GENDER)
+genderSum = data.frame(table(UniDays$gender))
+
+Bar1 <- gvisBarChart(genderSum,
+  options = list(hAxes="[{title:'Popularity', titleTextStyle: {color: 'green'}}]"
+    , vAxes="[{title:'Gender', titleTextStyle: {color: 'blue'}}]"))
+
+plot(Bar1)
 
 
 
