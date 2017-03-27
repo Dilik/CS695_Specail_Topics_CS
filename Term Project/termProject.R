@@ -208,6 +208,20 @@ plot(Pie)
 
 # 5 - User Profile (Monica & MD)
 
+# Load data
+UniDays <- readRDS("Unidays.RDS")
+
+# Show the distribution of users by location (city) with Google Map
+# !!! It takes time to show all the locations, so be patient !!!
+UniDays$gender <- tolower(UniDays$USER_GENDER)
+genderSum = data.frame(table(UniDays$gender))
+
+Bar1 <- gvisBarChart(genderSum, 
+                     options = list(hAxes="[{title:'Popularity', titleTextStyle: {color: 'green'}}]"
+                                    , vAxes="[{title:'Gender', titleTextStyle: {color: 'blue'}}]"))
+
+plot(Bar1)
+
 
 
 # 6 - Network Analysis (Satish)
@@ -220,8 +234,8 @@ UniDays <- readRDS("UniDays.RDS")
 tweets = UniDays$MESSAGE_BODY
 tweets = as.character(tweets)
 screenname = UniDays$USER_SCREEN_NAME
-screenname = as.character(screenname)
-write_rds(cbind(screenname,tweets), "tweets.RDS")
+ascreenname = as.character(screenname)
+write.csv(cbind(screenname,tweets), "tweets.RDS")
 
 # Generate edge list from tweets
 source("termProject.R")
