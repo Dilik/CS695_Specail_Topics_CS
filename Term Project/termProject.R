@@ -28,8 +28,8 @@ biocLite("graph")
 
 
 library('tm')
-library('RColorBrewer')
-library('wordcloud')
+library("RColorBrewer")
+library("wordcloud")
 library("googleVis")
 library("plyr")
 library(readr)
@@ -52,23 +52,29 @@ tweets <- UniDaysdata$MESSAGE_BODY
 # Function to clean tweets
 clean.text = function(x)
 {
-      # remove rt
-      x = gsub("rt", "", x)
-      # remove at
-      x = gsub("@\\w+", "", x)
-      # remove punctuation
-      x = gsub("[[:punct:]]", "", x)
-      # remove numbers
-      x = gsub("[[:digit:]]", "", x)
-      # remove links http
-      x = gsub("http\\w+", "", x)
-      # remove tabs
-      x = gsub("[ |\t]{2,}", "", x)
-      # remove blank spaces at the beginning
-      x = gsub("^ ", "", x)
-      # remove blank spaces at the end
-      x = gsub(" $", "", x)
-      return(x)
+  # remove unicode
+  x = gsub("/[\ud800-\udfff]/g", "", x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove hashtag
+  x = gsub("#\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # tolower
+  x = tolower(x)
+  return(x)
 
 }
 
@@ -85,12 +91,11 @@ corpus = Corpus(VectorSource(tweets))
 corpus = Corpus(VectorSource(cmail))
 # create term-document matrix
 tdm = TermDocumentMatrix(
-  corpus,
-    control = list(
-        wordLengths=c(3,20),
-	    removePunctuation = TRUE,
-	        stopwords = c("the", "a", stopwords("english")),
-		    removeNumbers = TRUE, tolower = FALSE) )
+ corpus,
+ control = list(wordLengths=c(3,20),
+ removePunctuation = TRUE,
+ stopwords = c("the", "a", stopwords("english")),
+ removeNumbers = TRUE, tolower = TRUE) )
 
 # convert as matrix
 tdm = as.matrix(tdm)
@@ -208,6 +213,7 @@ plot(Pie)
 
 # 5 - User Profile (Monica & MD)
 
+<<<<<<< HEAD
 # Load data
 UniDays <- readRDS("Unidays.RDS")
 
@@ -219,6 +225,19 @@ genderSum = data.frame(table(UniDays$gender))
 Bar1 <- gvisBarChart(genderSum, 
                      options = list(hAxes="[{title:'Popularity', titleTextStyle: {color: 'green'}}]"
                                     , vAxes="[{title:'Gender', titleTextStyle: {color: 'blue'}}]"))
+=======
+#********************************************
+#         Create a Customer Profile
+#********************************************
+
+UniDays$gender <- tolower(UniDays$USER_GENDER)
+genderSum = data.frame(table(UniDays$gender))
+
+#creattung bar char that shows frequency of gender users 
+Bar1 <- gvisBarChart(genderSum,
+  options = list(hAxes="[{title:'Popularity', titleTextStyle: {color: 'green'}}]"
+    , vAxes="[{title:'Gender', titleTextStyle: {color: 'blue'}}]"))
+>>>>>>> cf688840f6d33367c1df6ec96d5132ea49ad76c5
 
 plot(Bar1)
 
@@ -228,18 +247,16 @@ plot(Bar1)
 #********************************************
 #         Social Network Analysis
 #********************************************
-
 # Load data
-UniDays <- readRDS("UniDays.RDS")
-tweets = UniDays$MESSAGE_BODY
+termProjectData <- readRDS("Unidays.rds") 
 tweets = as.character(tweets)
 screenname = UniDays$USER_SCREEN_NAME
-ascreenname = as.character(screenname)
-write.csv(cbind(screenname,tweets), "tweets.RDS")
+screenname = as.character(screenname)
+write.csv(cbind(screenname,tweets), "tweets.csv")
 
 # Generate edge list from tweets
-source("termProject.R")
-retweeterPoster <- createList("tweets.RDS")
+source("createList.R")
+retweeterPoster <- createList("tweets.csv")
 
 # Create graph
 m <- ftM2adjM(ft = as.matrix(retweeterPoster[, 1:2]), W = retweeterPoster$weight, edgemode = "directed")
@@ -337,6 +354,7 @@ PlotGraph(m2,
           labels = central$label,
           filename = "bybBetwenness.png",
           title = "Pruned Graph by Centrality")
+
 
 
 
