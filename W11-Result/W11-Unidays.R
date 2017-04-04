@@ -52,10 +52,42 @@ cross_validate(container,N,"BAGGING")
 # loading the set of tweets for sentiment analysis
 # Replace the data with your term project data
 
-Trump <- read_csv("Trump.csv")
+#Trump <- read_csv("Trump.csv")
+UnidaysData <- readRDS("Unidays.RDS")
+it_tweets <- UnidaysData$MESSAGE_BODY
+# Function to clean tweets
+clean.text = function(x)
+{
+  # remove unicode
+  x = gsub("/[\ud800-\udfff]/g", "", x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove hashtag
+  x = gsub("#\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # tolower
+  x = tolower(x)
+  return(x)
+}
+
+it_tweets = clean.text(it_tweets);
+
 prep_fun <- tolower
 tok_fun <- word_tokenizer
-it_tweets <- itoken(Trump$MESSAGE_BODY,
+it_tweets <- itoken(it_tweets,
                     preprocessor = prep_fun,
                     tokenizer = tok_fun,
                     #  ids = Trump$X1,
@@ -78,15 +110,14 @@ classifier <- readRDS('TwSentiClassifier.RDS')
 preds_tweets <- predict(classifier, dtm_tweets_tfidf, type = 'response')[ ,1]
 
 # adding sentiment ratings to the dataset
-Trump$sentiment <- preds_tweets
+UnidaysData$sentiment <- preds_tweets
 
 # define positive as sentiment value greater than 0.65, negative as the value less than 0.35
-numPositive= nrow(subset(Trump, sentiment > 0.65))
-numNegative= nrow(subset(Trump, sentiment < 0.35))
-numNeutral = nrow(Trump) - numPositive-numNegative
+numPositive= nrow(subset(UnidaysData, sentiment > 0.65))
+numNegative= nrow(subset(UnidaysData, sentiment < 0.35))
+numNeutral = nrow(UnidaysData) - numPositive-numNegative
 dftemp=data.frame(topic=c("Positive", "Negative", "Neutral"), 
                   number=c(numPositive,numNegative, numNeutral))
 
 Pie <- gvisPieChart(dftemp)
 plot(Pie)
-
