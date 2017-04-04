@@ -10,7 +10,6 @@ install.packages('tm')
 install.packages('RColorBrewer')
 install.packages('wordcloud')
 install.packages("readr")
-install.packages("tm")
 install.packages("RColorBrewer")
 install.packages("wordcloud")
 install.packages("plyr")
@@ -22,6 +21,11 @@ install.packages("dplyr")
 install.packages("mclust")
 install.packages("igraph")
 install.packages("sna")
+install.packages('RTextTools')
+install.packages('e1071')
+install.packages('tidyverse')
+install.packages('text2vec')
+install.packages('ggrepel')
 source("http://bioconductor.org/biocLite.R")
 biocLite("RBGL")
 biocLite("graph")
@@ -41,6 +45,11 @@ library("stringr")
 library("stringi")
 library("magrittr")
 library("dplyr")
+library(tidyverse)
+library(text2vec)
+library(ggrepel)
+library(RTextTools)
+library(e1071)
 
 # 2 - Word Cloud (MD)
 
@@ -187,87 +196,158 @@ plot(Pie)
 #********************************************
 #         Sentiment Analysis
 #********************************************
-#R's c() function (for "combine") allows us to add a few industry- and Twitter-specific terms to form our final pos.words and neg.words vectors:
 
-pos.words = scan('positive-words.txt', what='character', comment.char=';')
-neg.words = scan('negative-words.txt', what='character', comment.char=';')
+# Machine Learning Version
 
-neg.words = c(neg.words, 'wtf', 'fail')
+tweet_all = c(UniDaysdata$tweet)
 
-#Implementing our sentiment scoring algorithm
-require(plyr)
-require(stringr)
-require(stringi)
+# label data
+sentiment_all = as.factor(UniDaysdata$sentiment)
 
-score.sentiment = function(sentences, pos.words, neg.words, .progress='none')
-{
-  
-  # we got a vector of sentences. plyr will handle a list
-  # or a vector as an "l" for us
-  # we want a simple array of scores back, so we use
-  # "l" + "a" + "ply" = "laply":
-  scores = laply(sentences, function(sentence, pos.words, neg.words) {
-    
-    # clean up sentences with R's regex-driven global substitute, gsub():
-    sentence = gsub('[[:punct:]]', '', sentence)
-    sentence = gsub('[[:cntrl:]]', '', sentence)
-    sentence = gsub('\\d+', '', sentence)
-    # and convert to lower case:
-    #sentence = tolower(sentence)
-    
-    # split into words. str_split is in the stringr package
-    word.list = str_split(sentence, '\\s+')
-    # sometimes a list() is one level of hierarchy too much
-    words = unlist(word.list)
-    
-    # compare our words to the dictionaries of positive & negative terms
-    pos.matches = match(words, pos.words)
-    neg.matches = match(words, neg.words)
-    
-    # match() returns the position of the matched term or NA
-    # we just want a TRUE/FALSE:
-    pos.matches = !is.na(pos.matches)
-    neg.matches = !is.na(neg.matches)
-    
-    # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
-    score = sum(pos.matches) - sum(neg.matches)
-    
-    return(score)
-  }, pos.words, neg.words, .progress=.progress )
-  
-  scores.df = data.frame(score=scores, text=sentences)
-  return(scores.df)
-}
+# create matrix
+mat= create_matrix(tweet_all, language="english", 
+                   removeStopwords=FALSE, removeNumbers=TRUE, 
+                   stemWords=FALSE, tm::weightTfIdf)
 
-sentiment.scores= score.sentiment(tweets, pos.words, neg.words, .progress='text')
+# create container for machine learning: trainning data size-400, testing data size-98
+container = create_container(mat, as.numeric(sentiment_all),
+                             trainSize=1:400, testSize=401:498,virgin=FALSE) 
 
-score= sentiment.scores$score
-hist(score)
-score = subset(score,score!=0)
-sentiscore = data.frame(score)
+# Train with several machine learning algorithms
+# Be patient !!!
+# Compare accuracy of different models
+N=5
+cross_validate(container,N,"SVM")
+cross_validate(container,N,"TREE")
+cross_validate(container,N,"RF")
+cross_validate(container,N,"BAGGING")
 
-#topic.scores= score.topic(tweets, sports.words, .progress='text')
-#topic.mentioned = subset(topic.scores, score !=0)
+#******************************************
+### Section 2: Classify Twitter tweets by reusing a trained learning model
 
-#N= nrow(topic.scores)
-#Nmentioned = nrow(topic.mentioned)
+# loading the set of tweets for sentiment analysis
+# Replace the data with your term project data
 
-#dftemp=data.frame(topic=c("Mentioned", "Not Mentioned"), 
-#                 number=c(Nmentioned,N-Nmentioned))
+UniDaysdata <- readRDS("Unidays.rds")
+prep_fun <- tolower
+tok_fun <- word_tokenizer
+it_tweets <- itoken(UniDaysdata$MESSAGE_BODY,
+                    preprocessor = prep_fun,
+                    tokenizer = tok_fun,
+                    #  ids = Trump$X1,
+                    progressbar = TRUE)
 
-Pos= nrow(sentiment.scores)
-Neg= nrow(sentiscore)
-Ntrl= nrow(NULL)
+# loading and reusig vocabulary and document-term matrix
+vectorizer <- readRDS("Unidays.rds")
+dtm_tweets <- create_dtm(it_tweets, vectorizer)
 
-dftemp=data.frame(words=c("Positive", "Negative", "Neutral"),
-                  number=c(Neg,Pos-Neg,!Pos||Neg))
+# define tf-idf model
+tfidf <- TfIdf$new()
 
-library("googleVis")
-Pie<- gvisPieChart(dftemp, options=list(
-  legend="{ position: 'top', maxLines:2 }",
-  colors="['#5C3292', '#1A8763', '#871B47']",
-  width=400, height=360))
+# transforming data with tf-idf
+dtm_tweets_tfidf <- fit_transform(dtm_tweets, tfidf)
+
+# loading and reusing classification model
+classifier <- readRDS('TwSentiClassifier.RDS')
+
+# predict probabilities of positiveness
+preds_tweets <- predict(classifier, dtm_tweets_tfidf, type = 'response')[ ,1]
+
+# adding sentiment ratings to the dataset
+Trump$sentiment <- preds_tweets
+
+# define positive as sentiment value greater than 0.65, negative as the value less than 0.35
+numPositive= nrow(subset(Trump, sentiment > 0.65))
+numNegative= nrow(subset(Trump, sentiment < 0.35))
+numNeutral = nrow(Trump) - numPositive-numNegative
+dftemp=data.frame(topic=c("Positive", "Negative", "Neutral"), 
+                  number=c(numPositive,numNegative, numNeutral))
+
+Pie <- gvisPieChart(dftemp)
 plot(Pie)
+
+# # Regular Version
+# #R's c() function (for "combine") allows us to add a few industry- and Twitter-specific terms to form our final pos.words and neg.words vectors:
+# 
+# pos.words = scan('positive-words.txt', what='character', comment.char=';')
+# neg.words = scan('negative-words.txt', what='character', comment.char=';')
+# 
+# neg.words = c(neg.words, 'wtf', 'fail')
+# 
+# #Implementing our sentiment scoring algorithm
+# require(plyr)
+# require(stringr)
+# require(stringi)
+# 
+# score.sentiment = function(sentences, pos.words, neg.words, .progress='none')
+# {
+#   
+#   # we got a vector of sentences. plyr will handle a list
+#   # or a vector as an "l" for us
+#   # we want a simple array of scores back, so we use
+#   # "l" + "a" + "ply" = "laply":
+#   scores = laply(sentences, function(sentence, pos.words, neg.words) {
+#     
+#     # clean up sentences with R's regex-driven global substitute, gsub():
+#     sentence = gsub('[[:punct:]]', '', sentence)
+#     sentence = gsub('[[:cntrl:]]', '', sentence)
+#     sentence = gsub('\\d+', '', sentence)
+#     # and convert to lower case:
+#     #sentence = tolower(sentence)
+#     
+#     # split into words. str_split is in the stringr package
+#     word.list = str_split(sentence, '\\s+')
+#     # sometimes a list() is one level of hierarchy too much
+#     words = unlist(word.list)
+#     
+#     # compare our words to the dictionaries of positive & negative terms
+#     pos.matches = match(words, pos.words)
+#     neg.matches = match(words, neg.words)
+#     
+#     # match() returns the position of the matched term or NA
+#     # we just want a TRUE/FALSE:
+#     pos.matches = !is.na(pos.matches)
+#     neg.matches = !is.na(neg.matches)
+#     
+#     # and conveniently enough, TRUE/FALSE will be treated as 1/0 by sum():
+#     score = sum(pos.matches) - sum(neg.matches)
+#     
+#     return(score)
+#   }, pos.words, neg.words, .progress=.progress )
+#   
+#   scores.df = data.frame(score=scores, text=sentences)
+#   return(scores.df)
+# }
+# 
+# sentiment.scores= score.sentiment(tweets, pos.words, neg.words, .progress='text')
+# 
+# score= sentiment.scores$score
+# hist(score)
+# score = subset(score,score!=0)
+# sentiscore = data.frame(score)
+# 
+# #topic.scores= score.topic(tweets, sports.words, .progress='text')
+# #topic.mentioned = subset(topic.scores, score !=0)
+# 
+# #N= nrow(topic.scores)
+# #Nmentioned = nrow(topic.mentioned)
+# 
+# #dftemp=data.frame(topic=c("Mentioned", "Not Mentioned"), 
+# #                 number=c(Nmentioned,N-Nmentioned))
+# 
+# Pos= nrow(sentiment.scores)
+# Neg= nrow(sentiscore)
+# Ntrl= nrow(NULL)
+# 
+# dftemp=data.frame(words=c("Positive", "Negative", "Neutral"),
+#                   number=c(Neg,Pos-Neg,!Pos||Neg))
+# 
+# library("googleVis")
+# Pie<- gvisPieChart(dftemp, options=list(
+#   legend="{ position: 'top', maxLines:2 }",
+#   colors="['#5C3292', '#1A8763', '#871B47']",
+#   width=400, height=360))
+# plot(Pie)
 
 
 
