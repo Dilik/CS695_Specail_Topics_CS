@@ -195,17 +195,59 @@ plot(Pie)
 #         Sentiment Analysis
 #********************************************
 
-# Machine Learning Version
+#### Machine Learning Version
 
-tweet_all = c(UniDaysdata$tweet)
+# load Twitter data for training and testing
+Twitterdata <- read_csv("Twitterdata.csv")
+
+
+# Read data in a R data object
+# load data for predicting sentiment
+UniDaysdata <- readRDS("Unidays.rds")
+tweets <- UniDaysdata$MESSAGE_BODY
+
+
+# Function to clean tweets
+clean.text = function(x)
+{
+  # remove unicode
+  x = gsub("/[\ud800-\udfff]/g", "", x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove hashtag
+  x = gsub("#\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # tolower
+  x = tolower(x)
+  return(x)
+  
+}
+
+# clean tweets
+tweets = clean.text(tweets)
+
+tweet_all = c(Twitterdata$tweet,UniDaysdata$MESSAGE_BODY)
 
 # label data
-sentiment_all = as.factor(UniDaysdata$sentiment)
+sentiment_all = as.factor(UniDaysdata$MESSAGE_BODY)
 
 # create matrix
 mat= create_matrix(tweet_all, language="english", 
                    removeStopwords=FALSE, removeNumbers=TRUE, 
-                   stemWords=FALSE, tm::weightTfIdf)
+                   stemWords=FALSE, tm::weightTfIdf, toLower = TRUE)
 
 # create container for machine learning: trainning data size-400, testing data size-98
 container = create_container(mat, as.numeric(sentiment_all),
@@ -232,11 +274,11 @@ tok_fun <- word_tokenizer
 it_tweets <- itoken(UniDaysdata$MESSAGE_BODY,
                     preprocessor = prep_fun,
                     tokenizer = tok_fun,
-                    #  ids = Trump$X1,
+                    ids = UniDaysdata$X1,
                     progressbar = TRUE)
 
 # loading and reusig vocabulary and document-term matrix
-vectorizer <- readRDS("Unidays.rds")
+vectorizer <- readRDS("TwSentiVectorizer.RDS")
 dtm_tweets <- create_dtm(it_tweets, vectorizer)
 
 # define tf-idf model
@@ -252,11 +294,11 @@ classifier <- readRDS('TwSentiClassifier.RDS')
 preds_tweets <- predict(classifier, dtm_tweets_tfidf, type = 'response')[ ,1]
 
 # adding sentiment ratings to the dataset
-Trump$sentiment <- preds_tweets
+UniDaysdata$MESSAGE_BODY <- preds_tweets
 
 # define positive as sentiment value greater than 0.65, negative as the value less than 0.35
-numPositive= nrow(subset(Trump, sentiment > 0.65))
-numNegative= nrow(subset(Trump, sentiment < 0.35))
+numPositive= nrow(subset(UniDaysdata, MESSAGE_BODY > 0.65))
+numNegative= nrow(subset(UniDaysdata, MESSAGE_BODY < 0.35))
 numNeutral = nrow(Trump) - numPositive-numNegative
 dftemp=data.frame(topic=c("Positive", "Negative", "Neutral"), 
                   number=c(numPositive,numNegative, numNeutral))
