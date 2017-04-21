@@ -277,7 +277,7 @@ it_tweets <- itoken(UniDaysdata$MESSAGE_BODY,
                     ids = UniDaysdata$X1,
                     progressbar = TRUE)
 
-# loading and reusig vocabulary and document-term matrix
+# loading and reusing vocabulary and document-term matrix
 vectorizer <- readRDS("TwSentiVectorizer.RDS")
 dtm_tweets <- create_dtm(it_tweets, vectorizer)
 
