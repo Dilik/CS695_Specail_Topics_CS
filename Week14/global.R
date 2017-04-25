@@ -29,7 +29,8 @@ tweets = as.character(tweets)
 #********************************************
 #         Word Cloud
 #********************************************
-corpus = Corpus(VectorSource(tweets))
+tweets1 = str_replace_all(tweets, "[^[:alnum:]]", " ")
+corpus = Corpus(VectorSource(tweets1))
 
 # create term-document matrix
 tdm = TermDocumentMatrix(
