@@ -21,10 +21,10 @@ function (input, output) {
     score= sentiment.scores$score
   
     x <- score
-    bins <- seq(min(x), max(x), length.out = input$bins2 + 1)
+    #bins <- seq(min(x), max(x))
     
     # draw the histogram with the specified number of bins
-    hist(x, breaks = bins, col = 'darkgray', border = 'white')
+    hist(x, breaks=5, col = 'darkgray', border = 'white')
     
   })
  
@@ -38,13 +38,11 @@ function (input, output) {
               sizes = central$size,
               labels = central$label
     )
-    
   })
   
   # ******* customer profile ************
   output$distPlot4 <- renderPlot({
     
-   
     barplot(dfrm, main="Number of posts by Days and Gender",
             xlab="Days", col=c("darkblue","red"),
             legend = rownames(dfrm), beside=TRUE)

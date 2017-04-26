@@ -11,9 +11,40 @@ require(plyr)
 require(stringr)
 
 # Load data set
-BKdata <- readRDS("BKdata.rds")
-df <- BKdata
+df <- readRDS("Unidays.RDS")
 tweete <- df$MESSAGE_BODY
+
+# Function to clean tweets
+clean.text = function(x)
+{
+  # remove unicode
+  x = gsub("/[\ud800-\udfff]/g", "", x)
+  # remove rt
+  x = gsub("rt", "", x)
+  # remove at
+  x = gsub("@\\w+", "", x)
+  # remove hashtag
+  x = gsub("#\\w+", "", x)
+  # remove punctuation
+  x = gsub("[[:punct:]]", "", x)
+  # remove numbers
+  x = gsub("[[:digit:]]", "", x)
+  # remove links http
+  x = gsub("http\\w+", "", x)
+  # remove tabs
+  x = gsub("[ |\t]{2,}", "", x)
+  # remove blank spaces at the beginning
+  x = gsub("^ ", "", x)
+  # remove blank spaces at the end
+  x = gsub(" $", "", x)
+  # tolower
+  x = tolower(x)
+  return(x)
+  
+}
+
+#cleat tweet
+tweete = clean.text(tweete)
 
 # Word cloud
 corpus = Corpus(VectorSource(tweete))
